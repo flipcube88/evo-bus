@@ -75,11 +75,11 @@ async function getStopInfo(stopId: string) {
 // SERVER API ROUTES
 // -------------------------
 
-// 0. Server Diagnostics & Health Status (Updated Revision To Trigger Deployment Share)
+// 0. Server Diagnostics & Health Status (Updated Revision To Trigger Deployment Share - 1.1.3)
 app.get("/api/status", (req, res) => {
   res.json({
     status: "ok",
-    version: "1.1.2",
+    version: "1.1.3",
     cors_access: "fully_enabled_for_external_domains_like_vercel",
     timestamp: Date.now(),
     environment: process.env.NODE_ENV || "development",
