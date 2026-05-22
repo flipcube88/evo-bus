@@ -194,50 +194,52 @@ export default function MtrSection({ bookmarks, toggleBookmark }: MtrSectionProp
         </div>
 
         {/* Horizontal linear tube timeline style */}
-        <div className="relative flex items-center overflow-x-auto pb-3 pt-2 gap-4 scrollbar-none">
-          {/* Connecting tube line */}
-          <div
-            className="absolute left-4 right-4 h-1.5 rounded-full pointer-events-none opacity-40"
-            style={{ backgroundColor: currentLineHexColor(), top: "calc(50% - 6px)" }}
-          />
+        <div className="overflow-x-auto pb-3 pt-2 scrollbar-none">
+          <div className="relative flex items-center gap-4 min-w-max px-4">
+            {/* Connecting tube line */}
+            <div
+              className="absolute left-4 right-4 h-1.5 rounded-full pointer-events-none opacity-40 px-2"
+              style={{ backgroundColor: currentLineHexColor(), top: "calc(50% - 6px)" }}
+            />
 
-          {selectedLine.stations.map((station, index) => {
-            const isSelected = selectedStation.code === station.code;
-            return (
-              <button
-                key={station.code}
-                id={`btn-station-${station.code}`}
-                onClick={() => handleStationChange(station)}
-                className="relative flex-none flex flex-col items-center group z-10"
-              >
-                {/* Station Node dot */}
-                <div
-                  className={`w-4 h-4 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
-                    isSelected
-                      ? "bg-white scale-125 border-slate-900 shadow-sm"
-                      : "bg-slate-100 border-slate-300 group-hover:bg-slate-200"
-                  }`}
-                  style={{ borderColor: isSelected ? currentLineHexColor() : undefined }}
+            {selectedLine.stations.map((station, index) => {
+              const isSelected = selectedStation.code === station.code;
+              return (
+                <button
+                  key={station.code}
+                  id={`btn-station-${station.code}`}
+                  onClick={() => handleStationChange(station)}
+                  className="relative flex-none flex flex-col items-center group z-10 w-14"
                 >
+                  {/* Station Node dot */}
                   <div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: currentLineHexColor() }}
-                  />
-                </div>
-                {/* Name */}
-                <span
-                  className={`mt-2 text-xs transition-colors duration-200 ${
-                    isSelected
-                      ? "font-semibold text-slate-950 scale-102"
-                      : "text-slate-500 group-hover:text-slate-700"
-                  }`}
-                >
-                  {station.name_tc}
-                </span>
-                <span className="text-[8px] text-slate-400 font-mono pt-0.5">{station.code}</span>
-              </button>
-            );
-          })}
+                    className={`w-4 h-4 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
+                      isSelected
+                        ? "bg-white scale-125 border-slate-900 shadow-sm"
+                        : "bg-slate-100 border-slate-300 group-hover:bg-slate-200"
+                    }`}
+                    style={{ borderColor: isSelected ? currentLineHexColor() : undefined }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: currentLineHexColor() }}
+                    />
+                  </div>
+                  {/* Name */}
+                  <span
+                    className={`mt-2 text-xs transition-colors duration-200 ${
+                      isSelected
+                        ? "font-semibold text-slate-950 scale-102"
+                        : "text-slate-500 group-hover:text-slate-700"
+                    }`}
+                  >
+                    {station.name_tc}
+                  </span>
+                  <span className="text-[8px] text-slate-400 font-mono pt-0.5">{station.code}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
