@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MTR_LINES, getStationName, MtrLine, MtrStation } from "../data/mtrData";
-import { Bookmark, MtrScheduleItem } from "../types";
+import { Bookmark, MtrScheduleItem, safeJsonParse } from "../types";
 import { Train, RefreshCw, Star, AlertCircle, Clock, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -25,7 +25,7 @@ export default function MtrSection({ bookmarks, toggleBookmark }: MtrSectionProp
     try {
       const resp = await fetch(`/api/mtr/schedule?line=${lineCode}&station=${stationCode}`);
       if (!resp.ok) throw new Error("無法連接港鐵伺服器");
-      const json = await resp.json();
+      const json = await safeJsonParse(resp);
 
       if (json.status === 0) {
         // MTR error/no data can occur if system offline during graveyard hours

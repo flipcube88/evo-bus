@@ -74,3 +74,19 @@ export interface MtrScheduleResponse {
     };
   };
 }
+
+export async function safeJsonParse(resp: Response): Promise<any> {
+  const contentType = resp.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await resp.text();
+    console.warn("Expected JSON but received non-JSON content. Length:", text.length, "First 200 chars:", text.slice(0, 200));
+    throw new Error("伺服器正在啟動中或回應格式不正確，請重新整理或稍作等待再試");
+  }
+  try {
+    return await resp.json();
+  } catch (err) {
+    console.error("JSON parsing error:", err);
+    throw new Error("解析伺服器數據失敗，請稍後重試");
+  }
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bookmark, KmbEta, MtrScheduleItem } from "../types";
+import { Bookmark, KmbEta, MtrScheduleItem, safeJsonParse } from "../types";
 import { getStationName } from "../data/mtrData";
 import { 
   Star, Train, RefreshCw, Trash2, ArrowRightLeft, Clock, Bus, CheckCircle2,
@@ -128,7 +128,7 @@ export default function FavoritesSection({
       try {
         const resp = await fetch(`/api/mtr/schedule?line=${bookmark.lineCode}&station=${bookmark.stationCode}`);
         if (!resp.ok) throw new Error("MTR fetch failed");
-        const json = await resp.json();
+        const json = await safeJsonParse(resp);
 
         if (json.status !== 0) {
           const key = `${bookmark.lineCode}-${bookmark.stationCode}`;
@@ -156,7 +156,7 @@ export default function FavoritesSection({
           `/api/kmb/eta?stop_id=${bookmark.stopId}&route=${bookmark.route}&service_type=${bookmark.serviceType}`
         );
         if (!resp.ok) throw new Error("KMB fetch failed");
-        const json = await resp.json();
+        const json = await safeJsonParse(resp);
 
         if (json.status === "ok") {
           const rawEtas: KmbEta[] = json.data || [];

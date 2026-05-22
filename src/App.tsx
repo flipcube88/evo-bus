@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
-import { Bookmark } from "./types";
+import { Bookmark, safeJsonParse } from "./types";
 import { Star, Bus, Train, Compass, Info, Github } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -20,7 +20,7 @@ export default function App() {
       setSyncLoading(true);
       const resp = await fetch(`/api/sync/get/${code.toUpperCase()}`);
       if (resp.ok) {
-        const json = await resp.json();
+        const json = await safeJsonParse(resp);
         if (json.status === "ok" && Array.isArray(json.bookmarks)) {
           setBookmarks(json.bookmarks);
           localStorage.setItem("hk_transit_bookmarks", JSON.stringify(json.bookmarks));
@@ -101,7 +101,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarks })
       });
-      const json = await resp.json();
+      const json = await safeJsonParse(resp);
       if (resp.ok && json.status === "ok") {
         const code = json.code.toUpperCase();
         setSyncCode(code);
@@ -129,7 +129,7 @@ export default function App() {
       setSyncLoading(true);
       setSyncError(null);
       const resp = await fetch(`/api/sync/get/${cleanCode}`);
-      const json = await resp.json();
+      const json = await safeJsonParse(resp);
       if (resp.ok && json.status === "ok" && Array.isArray(json.bookmarks)) {
         setBookmarks(json.bookmarks);
         localStorage.setItem("hk_transit_bookmarks", JSON.stringify(json.bookmarks));

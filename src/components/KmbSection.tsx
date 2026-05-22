@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bookmark, KmbRoute, KmbStop, KmbEta } from "../types";
+import { Bookmark, KmbRoute, KmbStop, KmbEta, safeJsonParse } from "../types";
 import { Search, Compass, Star, MapPin, RefreshCw, AlertCircle, Clock, ToggleLeft, ToggleRight, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -37,7 +37,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
       try {
         const resp = await fetch(`/api/kmb/routes?q=${encodeURIComponent(searchQuery.trim())}`);
         if (!resp.ok) throw new Error("Search failed");
-        const json = await resp.json();
+        const json = await safeJsonParse(resp);
         setSearchResults(json.data || []);
       } catch (err) {
         console.error("Route search error:", err);
@@ -64,7 +64,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
           `/api/kmb/route-stops?route=${selectedRoute.route}&bound=${boundValue}&service_type=${selectedRoute.service_type}`
         );
         if (!resp.ok) throw new Error("無法讀取巴士站名與順序");
-        const json = await resp.json();
+        const json = await safeJsonParse(resp);
         if (json.status === "ok") {
           setStops(json.data || []);
         } else {
@@ -91,7 +91,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
         `/api/kmb/eta?stop_id=${stopId}&route=${selectedRoute.route}&service_type=${selectedRoute.service_type}`
       );
       if (!resp.ok) throw new Error("ETA fetch failed");
-      const json = await resp.json();
+      const json = await safeJsonParse(resp);
 
       if (json.status === "ok") {
         // Filter ETAs matching selected direction
