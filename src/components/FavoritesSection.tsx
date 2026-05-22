@@ -18,6 +18,7 @@ interface FavoritesSectionProps {
   onGoogleLogin: () => Promise<void>;
   onGoogleLogout: () => Promise<void>;
   onRefreshCloud: () => Promise<void>;
+  forceOpenSync?: boolean;
 }
 
 interface FavoriteEtaState {
@@ -37,7 +38,8 @@ export default function FavoritesSection({
   syncError,
   onGoogleLogin,
   onGoogleLogout,
-  onRefreshCloud
+  onRefreshCloud,
+  forceOpenSync
 }: FavoritesSectionProps) {
   const [favoriteEtas, setFavoriteEtas] = useState<FavoriteEtaState>({});
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -45,6 +47,13 @@ export default function FavoritesSection({
 
   // Sync state UI variables
   const [isSyncPanelOpen, setIsSyncPanelOpen] = useState<boolean>(false);
+
+  // Listen to forced sync panel open triggers
+  useEffect(() => {
+    if (forceOpenSync) {
+      setIsSyncPanelOpen(true);
+    }
+  }, [forceOpenSync]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -234,17 +243,31 @@ export default function FavoritesSection({
     <div id="favorites-section" className="space-y-4">
       {/* Overview stats header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-500 tracking-wider">我的常用路線與車站</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-500 tracking-wider">我的常用路線與車站</h3>
+          <button
+            onClick={() => setIsSyncPanelOpen(!isSyncPanelOpen)}
+            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
+              user
+                ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100/40"
+                : "bg-slate-100/60 dark:bg-slate-800/80 border-slate-205/60 dark:border-slate-700/50 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-200/50"
+            }`}
+            title="開啟或關閉雲端備份與同步設定"
+          >
+            <Cloud className={`w-3 h-3 ${user ? "animate-pulse" : ""}`} />
+            <span>{isSyncPanelOpen ? "關閉設定" : user ? "已啟用同步" : "雲端同步"}</span>
+          </button>
+        </div>
         {bookmarks.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-400 bg-white px-2.5 py-1.5 border border-slate-100 rounded-xl">
+            <span className="text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-900 px-2.5 py-1.5 border border-slate-100 dark:border-slate-800 rounded-xl">
               {autoRefreshSecs}秒後自動刷新
             </span>
             <button
               id="btn-favs-refresh"
               onClick={fetchAllFavorites}
               disabled={refreshing}
-              className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-100 transition-colors text-slate-600 active:scale-95 disabled:opacity-50"
+              className="p-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-100 dark:border-slate-800 transition-colors text-slate-600 dark:text-slate-300 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </button>
@@ -253,37 +276,59 @@ export default function FavoritesSection({
       </div>
 
       {/* 跨平台同步控制面板 (Cross-platform Sync Control Panel) */}
-      <div id="sync-control-panel" className="bg-white rounded-2xl border border-slate-200/55 shadow-3xs overflow-hidden transition-all duration-300">
-        <button
-          id="btn-toggle-sync-panel"
-          onClick={() => setIsSyncPanelOpen(!isSyncPanelOpen)}
-          className="w-full px-4 py-3 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <Cloud className={`w-4 h-4 ${user ? "text-emerald-500 animate-pulse" : "text-slate-400"}`} />
-            <span className="text-xs font-bold text-slate-700">
-              {user ? "📳 雲端自動同步正啟用中" : "☁️ 點此登入以啟動跨平台/手機同步"}
-            </span>
-            {user && (
-              <span className="bg-emerald-50 text-emerald-600 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-emerald-100">
-                已登入: {user.displayName || user.email}
-              </span>
-            )}
-          </div>
-          <span className="text-[11px] font-medium text-slate-400">
-            {isSyncPanelOpen ? "收合選項 ▲" : "展開選項 ▼"}
-          </span>
-        </button>
-
-        <AnimatePresence>
-          {isSyncPanelOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="border-t border-slate-100 p-4 space-y-4 text-xs"
+      <AnimatePresence>
+        {isSyncPanelOpen && (
+          <motion.div
+            id="sync-control-panel"
+            initial={{ height: 0, opacity: 0, y: -8 }}
+            animate={{ height: "auto", opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: -8 }}
+            transition={{ type: "spring", stiffness: 280, damping: 26 }}
+            className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200/55 dark:border-slate-800/80 shadow-3xs overflow-hidden"
+          >
+            <button
+              id="btn-toggle-sync-panel"
+              onClick={() => setIsSyncPanelOpen(false)}
+              className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 flex items-center justify-between transition-colors cursor-pointer text-left"
             >
+              <div className="flex items-center gap-3">
+                {/* Redesigned Premium Sync Icon Box */}
+                <div className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  user 
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 shadow-sm shadow-emerald-500/10" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                }`}>
+                  <Cloud className={`w-4 h-4 ${user ? "animate-pulse" : ""}`} />
+                  {user && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+                  )}
+                </div>
+
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {user ? "雲端備份與自動同步已啟動" : "跨平台雲端備份與同步"}
+                    </span>
+                    {user && (
+                      <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/50">
+                        已連結 Google
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    {user 
+                      ? `${user.displayName || user.email} · 即時雙向防丟失備份中` 
+                      : "點此登入 Google 帳戶即可在您的多部手機與電腦上同步我的最愛"
+                    }
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                收合 ▲
+              </span>
+            </button>
+
+            <div className="border-t border-slate-100 dark:border-slate-800/80 p-4 space-y-4 text-xs">
               {syncLoading && (
                 <div className="flex items-center gap-1.5 text-slate-500">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -385,10 +430,10 @@ export default function FavoritesSection({
                   </div>
                 </div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Empty State visual card */}
       {bookmarks.length === 0 ? (

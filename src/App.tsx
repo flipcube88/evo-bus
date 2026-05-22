@@ -3,7 +3,7 @@ import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
 import { Bookmark, getApiUrl, transitFetch, shouldBypassServer } from "./types";
-import { Star, Bus, Train, Info, LogIn, LogOut, Settings, Globe, Check } from "lucide-react";
+import { Star, Bus, Train, Info, LogIn, LogOut, Settings, Globe, Check, Sun, Moon, Cloud } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -24,11 +24,34 @@ export default function App() {
   const [syncLoading, setSyncLoading] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [showApiConfig, setShowApiConfig] = useState<boolean>(false);
+  const [forceOpenSync, setForceOpenSync] = useState<boolean>(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("hk_transit_theme_v5");
+      if (stored === "light" || stored === "dark") {
+        return stored;
+      }
+      // Fallback to system preferred theme
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+    }
+    return "light";
+  });
   const [customApiUrl, setCustomApiUrl] = useState<string>(
     localStorage.getItem("hk_transit_api_base_url") || 
     // Always fall back to the public PRE cluster url for Vercel CORS bypasses
     "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
   );
+
+  // Sync theme with document class list
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
   // Load bookmarks on initiation and listen to FirebaseAuth
   useEffect(() => {
@@ -194,6 +217,38 @@ export default function App() {
 
           {/* Connected status badge to show custom local lazy routes caching success */}
           <div className="flex items-center gap-2 relative">
+            {/* Cloud Sync Status Icon Trigger */}
+            <button
+              onClick={() => {
+                setActiveTab("favorites");
+                setForceOpenSync(true);
+                // Reset after trigger so that closing works cleanly subsequently
+                setTimeout(() => setForceOpenSync(false), 500);
+              }}
+              className={`p-1.5 rounded-full border transition-all cursor-pointer flex items-center justify-center relative ${
+                user 
+                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/65 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100/55" 
+                  : "bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600"
+              }`}
+              title={user ? `雲端同步啟用中 (${user.displayName || user.email})` : "啟動跨裝置雲端備份與手機同步"}
+            >
+              <Cloud className={`w-3.5 h-3.5 ${user && syncLoading ? "animate-spin animate-duration-1000" : user ? "animate-pulse" : ""}`} />
+              {user && (
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                const nextTheme = theme === "light" ? "dark" : "light";
+                setTheme(nextTheme);
+                localStorage.setItem("hk_transit_theme_v5", nextTheme);
+              }}
+              className="p-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+              title={theme === "light" ? "切換至暗黑模式" : "切換至明亮模式"}
+            >
+              {theme === "light" ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 font-bold" />}
+            </button>
             <span className="text-[10px] font-mono text-slate-400 hidden sm:inline-block">數據中心連接</span>
             <button
               id="btn-toggle-api-config"
@@ -337,20 +392,6 @@ export default function App() {
       {/* 2. Main content block centering */}
       <main id="app-main" className="max-w-4xl mx-auto px-4 mt-6">
         
-        {/* Welcome greeting card with hints */}
-        <div id="welcome-hint-card" className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="space-y-1.5 text-center md:text-left">
-            <h2 className="text-lg font-bold tracking-tight">實時到站，一手掌握</h2>
-            <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-              整合香港特區政府<strong>運輸署開放數據大聯盟</strong> API。為您提供最精準的九巴 (KMB) 及港鐵 (MTR) 列車抵站時間表，收藏喜愛車站即可實現閃電預估。
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-2xl border border-white/10 text-xs font-medium backdrop-blur-sm">
-            <Info className="w-4 h-4 text-emerald-400" />
-            <span>智能伺服器快取已啟動</span>
-          </div>
-        </div>
-
         {/* 3. Navigation custom tabs layout */}
         <div id="tabs-navigation" className="bg-slate-200/60 p-1.5 rounded-2xl flex items-center gap-1 mb-6 border border-slate-200/20">
           <button
@@ -421,6 +462,7 @@ export default function App() {
                   onGoogleLogin={handleGoogleLogin}
                   onGoogleLogout={handleGoogleLogout}
                   onRefreshCloud={handleRefreshCloud}
+                  forceOpenSync={forceOpenSync}
                 />
               </motion.div>
             )}
