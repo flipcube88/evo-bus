@@ -95,6 +95,13 @@ export function getApiUrl(path: string): string {
   if (typeof window === "undefined") {
     return cleanPath;
   }
+  
+  // Custom API endpoint stored in localStorage
+  const storedApiUrl = localStorage.getItem("hk_transit_api_base_url");
+  if (storedApiUrl) {
+    return `${storedApiUrl.replace(/\/$/, "")}${cleanPath}`;
+  }
+
   const host = window.location.hostname;
   if (
     host === "localhost" || 
@@ -104,7 +111,7 @@ export function getApiUrl(path: string): string {
   ) {
     return cleanPath;
   }
-  // Point back to development or shared cloud run app directly
-  return `https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
+  // Default to development server URL which has active code and CORS headers configured
+  return `https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
 }
 

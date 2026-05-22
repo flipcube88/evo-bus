@@ -3,7 +3,7 @@ import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
 import { Bookmark, getApiUrl } from "./types";
-import { Star, Bus, Train, Info, LogIn, LogOut } from "lucide-react";
+import { Star, Bus, Train, Info, LogIn, LogOut, Settings, Globe, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -22,6 +22,11 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [syncLoading, setSyncLoading] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [showApiConfig, setShowApiConfig] = useState<boolean>(false);
+  const [customApiUrl, setCustomApiUrl] = useState<string>(
+    localStorage.getItem("hk_transit_api_base_url") || 
+    "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
+  );
 
   // Load bookmarks on initiation and listen to FirebaseAuth
   useEffect(() => {
@@ -184,28 +189,115 @@ export default function App() {
           </div>
 
           {/* Connected status badge to show custom local lazy routes caching success */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <span className="text-[10px] font-mono text-slate-400 hidden sm:inline-block">數據中心連接</span>
-            <div
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all ${
+            <button
+              id="btn-toggle-api-config"
+              onClick={() => setShowApiConfig(!showApiConfig)}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all select-none cursor-pointer hover:shadow-xs hover:border-slate-300 ${
                 serverStatus === "ok"
-                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100/50"
                   : serverStatus === "connecting"
-                  ? "bg-slate-100 text-slate-600 border border-slate-200"
-                  : "bg-red-50 text-red-600 border border-red-100"
+                  ? "bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100/50"
+                  : "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100/50"
               }`}
+              title="點此設定連線數據中心"
             >
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
                   serverStatus === "ok"
-                    ? "bg-emerald-500 animate-pulse-live"
+                    ? "bg-emerald-500 animate-pulse"
                     : serverStatus === "connecting"
-                    ? "bg-amber-400 animate-spin border-t-transparent border border-slate-400"
+                    ? "bg-amber-400 animate-pulse"
                     : "bg-red-500"
                 }`}
               />
               <span>{serverStatus === "ok" ? "已連線" : serverStatus === "connecting" ? "連線中" : "錯誤"}</span>
-            </div>
+              <Settings className="w-3 h-3 text-slate-400 ml-0.5" />
+            </button>
+
+            {showApiConfig && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-250 rounded-2xl shadow-xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-slate-500" />
+                    自訂數據中心連線
+                  </span>
+                  <button onClick={() => setShowApiConfig(false)} className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer">
+                    關閉
+                  </button>
+                </div>
+                
+                <p className="text-[10.5px] text-slate-500 leading-relaxed mb-3">
+                  如果您是從外部網域 (如 Vercel/GitHub Pages) 連接本網網頁，請在此處將對接伺服器切換為<strong>開發中伺服器 (包含最新安全 CORS 授權)</strong>：
+                </p>
+
+                <div className="space-y-1.5 mb-3">
+                  <button
+                    onClick={() => {
+                      setCustomApiUrl("https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
+                    }}
+                    className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                      customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
+                        ? "bg-slate-50 border-slate-900 text-slate-900 font-bold"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>🛠️ 開發中伺服器 (最新 CORS 支援)</span>
+                    {customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCustomApiUrl("https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
+                    }}
+                    className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                      customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
+                        ? "bg-slate-50 border-slate-900 text-slate-900 font-bold"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>🌐 共享發佈伺服器 (Production)</span>
+                    {customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">自訂對接域名</label>
+                  <input
+                    type="text"
+                    value={customApiUrl}
+                    onChange={(e) => setCustomApiUrl(e.target.value)}
+                    placeholder="例如 https://something.run.app"
+                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:bg-white focus:border-slate-400 outline-none transition-all"
+                  />
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem("hk_transit_api_base_url", customApiUrl);
+                      setShowApiConfig(false);
+                      window.location.reload();
+                    }}
+                    className="flex-1 py-1.5 bg-slate-900 text-white rounded-lg text-center text-xs font-bold hover:bg-slate-800 cursor-pointer transition-colors"
+                  >
+                    儲存並重載
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem("hk_transit_api_base_url");
+                      setCustomApiUrl("https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
+                      setShowApiConfig(false);
+                      window.location.reload();
+                    }}
+                    className="py-1.5 px-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-center text-xs font-medium hover:bg-slate-200 cursor-pointer transition-colors"
+                  >
+                    原始
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
