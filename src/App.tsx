@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
-import { Bookmark, getApiUrl } from "./types";
+import { Bookmark, getApiUrl, transitFetch, shouldBypassServer } from "./types";
 import { Star, Bus, Train, Info, LogIn, LogOut, Settings, Globe, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { User, onAuthStateChanged } from "firebase/auth";
@@ -19,6 +19,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"favorites" | "kmb" | "mtr">("favorites");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [serverStatus, setServerStatus] = useState<"ok" | "connecting" | "error">("connecting");
+  const [isDirectMode, setIsDirectMode] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [syncLoading, setSyncLoading] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -31,6 +32,8 @@ export default function App() {
 
   // Load bookmarks on initiation and listen to FirebaseAuth
   useEffect(() => {
+    setIsDirectMode(shouldBypassServer());
+    
     // 1. Load local bookmarks first (instant responsiveness)
     try {
       const stored = localStorage.getItem("hk_transit_bookmarks");
@@ -81,7 +84,7 @@ export default function App() {
     // 3. Ping server connection to warm up APIs (for custom backend ETA query proxying)
     const checkServer = async () => {
        try {
-         const resp = await fetch(getApiUrl("/api/status"));
+         const resp = await transitFetch("/api/status");
          if (resp.ok) {
            setServerStatus("ok");
          } else {
@@ -197,7 +200,9 @@ export default function App() {
               onClick={() => setShowApiConfig(!showApiConfig)}
               className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all select-none cursor-pointer hover:shadow-xs hover:border-slate-300 ${
                 serverStatus === "ok"
-                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100/50"
+                  ? isDirectMode
+                    ? "bg-sky-50 text-sky-600 border border-sky-100 hover:bg-sky-100/50"
+                    : "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100/50"
                   : serverStatus === "connecting"
                   ? "bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100/50"
                   : "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100/50"
@@ -207,13 +212,23 @@ export default function App() {
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
                   serverStatus === "ok"
-                    ? "bg-emerald-500 animate-pulse"
+                    ? isDirectMode
+                      ? "bg-sky-500 animate-pulse"
+                      : "bg-emerald-500 animate-pulse"
                     : serverStatus === "connecting"
                     ? "bg-amber-400 animate-pulse"
                     : "bg-red-500"
                 }`}
               />
-              <span>{serverStatus === "ok" ? "已連線" : serverStatus === "connecting" ? "連線中" : "錯誤"}</span>
+              <span>
+                {serverStatus === "ok"
+                  ? isDirectMode
+                    ? "直連成功"
+                    : "已連線"
+                  : serverStatus === "connecting"
+                  ? "連線中"
+                  : "錯誤"}
+              </span>
               <Settings className="w-3 h-3 text-slate-400 ml-0.5" />
             </button>
 
@@ -230,22 +245,38 @@ export default function App() {
                 </div>
                 
                 <p className="text-[10.5px] text-slate-500 leading-relaxed mb-3">
-                  如果您是從外部網域 (如 Vercel/GitHub Pages) 連接，請<strong>必須選擇「共享發佈伺服器」</strong>，並確保您已在 AI Studio 點擊 Share 分享最新版本 (開發中伺服器需登入驗證，外部網站無法連接)。
+                  系統偵測到您在外部網域 (如 Vercel) 執行時，<strong>會自動啟動「純前端直連模式」</strong>，直接呼叫九巴與港鐵的開放數據 API，完美繞過 Google 預覽的 CORS 及身份驗證限制！
                 </p>
 
                 <div className="space-y-1.5 mb-3">
+                  <button
+                    onClick={() => {
+                      const current = localStorage.getItem("hk_transit_force_client_direct") === "true";
+                      localStorage.setItem("hk_transit_force_client_direct", (!current).toString());
+                      window.location.reload();
+                    }}
+                    className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                      localStorage.getItem("hk_transit_force_client_direct") === "true"
+                        ? "bg-sky-50 border-sky-400 text-sky-800 font-bold"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>📱 強制「直連公共 API 模式」(免後端)</span>
+                    {localStorage.getItem("hk_transit_force_client_direct") === "true" && <Check className="w-3.5 h-3.5 text-sky-600" />}
+                  </button>
+
                   <button
                     onClick={() => {
                       setCustomApiUrl("https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
                     }}
                     className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
                       customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
-                        ? "bg-slate-50 border-slate-900 text-slate-900 font-bold"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        ? "bg-slate-50 border-slate-300 text-slate-700"
+                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                     }`}
                   >
-                    <span>🌐 共享發佈伺服器 (請在 AI Studio 中點擊 Share 更新)</span>
-                    {customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
+                    <span>🌐 共享伺服器 (僅在 AI 預覽內有效)</span>
+                    {customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-500" />}
                   </button>
 
                   <button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bookmark, KmbEta, MtrScheduleItem, safeJsonParse, getApiUrl } from "../types";
+import { Bookmark, KmbEta, MtrScheduleItem, safeJsonParse, getApiUrl, transitFetch } from "../types";
 import { getStationName } from "../data/mtrData";
 import { 
   Star, Train, RefreshCw, Trash2, ArrowRightLeft, Clock, Bus, CheckCircle2,
@@ -118,7 +118,7 @@ export default function FavoritesSection({
   const fetchSingleBookmarkEta = async (bookmark: Bookmark) => {
     if (bookmark.type === "mtr") {
       try {
-        const resp = await fetch(getApiUrl(`/api/mtr/schedule?line=${bookmark.lineCode}&station=${bookmark.stationCode}`));
+        const resp = await transitFetch(`/api/mtr/schedule?line=${bookmark.lineCode}&station=${bookmark.stationCode}`);
         if (!resp.ok) throw new Error("MTR fetch failed");
         const json = await safeJsonParse(resp);
 
@@ -144,8 +144,8 @@ export default function FavoritesSection({
     } else {
       // KMB type
       try {
-        const resp = await fetch(
-          getApiUrl(`/api/kmb/eta?stop_id=${bookmark.stopId}&route=${bookmark.route}&service_type=${bookmark.serviceType}`)
+        const resp = await transitFetch(
+          `/api/kmb/eta?stop_id=${bookmark.stopId}&route=${bookmark.route}&service_type=${bookmark.serviceType}`
         );
         if (!resp.ok) throw new Error("KMB fetch failed");
         const json = await safeJsonParse(resp);
