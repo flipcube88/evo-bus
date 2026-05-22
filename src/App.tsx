@@ -25,6 +25,7 @@ export default function App() {
   const [showApiConfig, setShowApiConfig] = useState<boolean>(false);
   const [customApiUrl, setCustomApiUrl] = useState<string>(
     localStorage.getItem("hk_transit_api_base_url") || 
+    // Always fall back to the public PRE cluster url for Vercel CORS bypasses
     "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
   );
 
