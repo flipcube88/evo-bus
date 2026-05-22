@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
-import { Bookmark } from "./types";
+import { Bookmark, getApiUrl } from "./types";
 import { Star, Bus, Train, Info, LogIn, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { User, onAuthStateChanged } from "firebase/auth";
@@ -75,7 +75,7 @@ export default function App() {
     // 3. Ping server connection to warm up APIs (for custom backend ETA query proxying)
     const checkServer = async () => {
       try {
-        const resp = await fetch("/api/kmb/routes");
+        const resp = await fetch(getApiUrl("/api/kmb/routes"));
         if (resp.ok) {
           setServerStatus("ok");
         } else {

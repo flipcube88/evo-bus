@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bookmark, KmbRoute, KmbStop, KmbEta, safeJsonParse } from "../types";
+import { Bookmark, KmbRoute, KmbStop, KmbEta, safeJsonParse, getApiUrl } from "../types";
 import { Search, Compass, Star, MapPin, RefreshCw, AlertCircle, Clock, ToggleLeft, ToggleRight, ArrowUpDown, ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -35,7 +35,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
       }
       setSearchLoading(true);
       try {
-        const resp = await fetch(`/api/kmb/routes?q=${encodeURIComponent(searchQuery.trim())}`);
+        const resp = await fetch(getApiUrl(`/api/kmb/routes?q=${encodeURIComponent(searchQuery.trim())}`));
         if (!resp.ok) throw new Error("Search failed");
         const json = await safeJsonParse(resp);
         setSearchResults(json.data || []);
@@ -61,7 +61,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
       try {
         const boundValue = currentBound;
         const resp = await fetch(
-          `/api/kmb/route-stops?route=${selectedRoute.route}&bound=${boundValue}&service_type=${selectedRoute.service_type}`
+          getApiUrl(`/api/kmb/route-stops?route=${selectedRoute.route}&bound=${boundValue}&service_type=${selectedRoute.service_type}`)
         );
         if (!resp.ok) throw new Error("無法讀取巴士站名與順序");
         const json = await safeJsonParse(resp);
@@ -88,7 +88,7 @@ export default function KmbSection({ bookmarks, toggleBookmark }: KmbSectionProp
     setEtaLoading(true);
     try {
       const resp = await fetch(
-        `/api/kmb/eta?stop_id=${stopId}&route=${selectedRoute.route}&service_type=${selectedRoute.service_type}`
+        getApiUrl(`/api/kmb/eta?stop_id=${stopId}&route=${selectedRoute.route}&service_type=${selectedRoute.service_type}`)
       );
       if (!resp.ok) throw new Error("ETA fetch failed");
       const json = await safeJsonParse(resp);

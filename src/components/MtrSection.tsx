@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MTR_LINES, getStationName, MtrLine, MtrStation } from "../data/mtrData";
-import { Bookmark, MtrScheduleItem, safeJsonParse } from "../types";
+import { Bookmark, MtrScheduleItem, safeJsonParse, getApiUrl } from "../types";
 import { Train, RefreshCw, Star, AlertCircle, Clock, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -23,7 +23,7 @@ export default function MtrSection({ bookmarks, toggleBookmark }: MtrSectionProp
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`/api/mtr/schedule?line=${lineCode}&station=${stationCode}`);
+      const resp = await fetch(getApiUrl(`/api/mtr/schedule?line=${lineCode}&station=${stationCode}`));
       if (!resp.ok) throw new Error("無法連接港鐵伺服器");
       const json = await safeJsonParse(resp);
 

@@ -90,3 +90,21 @@ export async function safeJsonParse(resp: Response): Promise<any> {
   }
 }
 
+export function getApiUrl(path: string): string {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  if (typeof window === "undefined") {
+    return cleanPath;
+  }
+  const host = window.location.hostname;
+  if (
+    host === "localhost" || 
+    host === "127.0.0.1" || 
+    host.includes("run.app") || 
+    host.includes("webcontainer.io")
+  ) {
+    return cleanPath;
+  }
+  // Point back to development or shared cloud run app directly
+  return `https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
+}
+
