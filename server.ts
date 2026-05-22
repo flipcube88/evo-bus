@@ -4,6 +4,7 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
 
+// Version bump to trigger AI Studio share prompt
 const app = express();
 app.use(express.json());
 
