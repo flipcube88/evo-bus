@@ -111,7 +111,7 @@ export function getApiUrl(path: string): string {
   ) {
     return cleanPath;
   }
-  // Default to shared server URL which is public and does not require AI Studio authentication
+  // Default to shared server URL (PRE) which is public and accessible by external domains like Vercel without AI Studio login cookies
   return `https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
 }
 

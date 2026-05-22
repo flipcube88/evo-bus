@@ -25,7 +25,7 @@ export default function App() {
   const [showApiConfig, setShowApiConfig] = useState<boolean>(false);
   const [customApiUrl, setCustomApiUrl] = useState<string>(
     localStorage.getItem("hk_transit_api_base_url") || 
-    "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
+    "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
   );
 
   // Load bookmarks on initiation and listen to FirebaseAuth
@@ -79,16 +79,16 @@ export default function App() {
 
     // 3. Ping server connection to warm up APIs (for custom backend ETA query proxying)
     const checkServer = async () => {
-      try {
-        const resp = await fetch(getApiUrl("/api/kmb/routes"));
-        if (resp.ok) {
-          setServerStatus("ok");
-        } else {
-          setServerStatus("error");
-        }
-      } catch {
-        setServerStatus("error");
-      }
+       try {
+         const resp = await fetch(getApiUrl("/api/status"));
+         if (resp.ok) {
+           setServerStatus("ok");
+         } else {
+           setServerStatus("error");
+         }
+       } catch {
+         setServerStatus("error");
+       }
     };
     checkServer();
 

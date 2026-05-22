@@ -75,6 +75,18 @@ async function getStopInfo(stopId: string) {
 // SERVER API ROUTES
 // -------------------------
 
+// 0. Server Diagnostics & Health Status
+app.get("/api/status", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV || "development",
+    cors_enabled: true,
+    kmb_cache_preloaded: kmbRoutesCache !== null,
+    kmb_cache_size: kmbRoutesCache ? kmbRoutesCache.length : 0
+  });
+});
+
 // 1. KMB Route Search
 app.get("/api/kmb/routes", async (req, res) => {
   try {
