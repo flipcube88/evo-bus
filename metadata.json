@@ -1,0 +1,6 @@
+{
+  "name": "香港乘車易 KMB & MTR ETA",
+  "description": "實時查詢九巴(KMB)巴士及港鐵(MTR)鐵路實時抵達到站時間，支援收藏常用車站，提供簡便快速的香港出行情報。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
