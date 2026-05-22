@@ -111,7 +111,7 @@ export function getApiUrl(path: string): string {
   ) {
     return cleanPath;
   }
-  // Default to development server URL which has active code and CORS headers configured
-  return `https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
+  // Default to shared server URL which is public and does not require AI Studio authentication
+  return `https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app${cleanPath}`;
 }
 

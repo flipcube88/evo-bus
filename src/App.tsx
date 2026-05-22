@@ -229,24 +229,10 @@ export default function App() {
                 </div>
                 
                 <p className="text-[10.5px] text-slate-500 leading-relaxed mb-3">
-                  如果您是從外部網域 (如 Vercel/GitHub Pages) 連接本網網頁，請在此處將對接伺服器切換為<strong>開發中伺服器 (包含最新安全 CORS 授權)</strong>：
+                  如果您是從外部網域 (如 Vercel/GitHub Pages) 連接，請<strong>必須選擇「共享發佈伺服器」</strong>，並確保您已在 AI Studio 點擊 Share 分享最新版本 (開發中伺服器需登入驗證，外部網站無法連接)。
                 </p>
 
                 <div className="space-y-1.5 mb-3">
-                  <button
-                    onClick={() => {
-                      setCustomApiUrl("https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
-                    }}
-                    className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
-                      customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
-                        ? "bg-slate-50 border-slate-900 text-slate-900 font-bold"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span>🛠️ 開發中伺服器 (最新 CORS 支援)</span>
-                    {customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
-                  </button>
-
                   <button
                     onClick={() => {
                       setCustomApiUrl("https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
@@ -257,8 +243,22 @@ export default function App() {
                         : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                     }`}
                   >
-                    <span>🌐 共享發佈伺服器 (Production)</span>
+                    <span>🌐 共享發佈伺服器 (請在 AI Studio 中點擊 Share 更新)</span>
                     {customApiUrl === "https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCustomApiUrl("https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
+                    }}
+                    className={`w-full text-left text-[10.5px] p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                      customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app"
+                        ? "bg-slate-50 border-slate-900 text-slate-900 font-bold"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>🛠️ 開發中伺服器 (僅限由 AI Studio 內預覽使用)</span>
+                    {customApiUrl === "https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app" && <Check className="w-3.5 h-3.5 text-slate-900" />}
                   </button>
                 </div>
 
@@ -287,7 +287,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       localStorage.removeItem("hk_transit_api_base_url");
-                      setCustomApiUrl("https://ais-dev-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
+                      setCustomApiUrl("https://ais-pre-jpvkv3zthkbit3hwb6lbhf-179377875007.us-east1.run.app");
                       setShowApiConfig(false);
                       window.location.reload();
                     }}
