@@ -3,21 +3,21 @@ import { Bookmark, KmbEta, MtrScheduleItem, safeJsonParse } from "../types";
 import { getStationName } from "../data/mtrData";
 import { 
   Star, Train, RefreshCw, Trash2, ArrowRightLeft, Clock, Bus, CheckCircle2,
-  Cloud, Copy, Check, Link2, Unlink, AlertCircle
+  Cloud, Copy, Check, Link2, Unlink, AlertCircle, LogIn, LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { User } from "firebase/auth";
 
 interface FavoritesSectionProps {
   bookmarks: Bookmark[];
   toggleBookmark: (bookmark: Bookmark) => void;
   onNavigateToTab: (tab: "kmb" | "mtr") => void;
-  syncCode: string | null;
+  user: User | null;
   syncLoading: boolean;
   syncError: string | null;
-  onCreateSyncCode: () => Promise<string | null>;
-  onLoadSyncCode: (code: string) => Promise<boolean>;
-  onDisconnectSync: () => void;
-  onTriggerRefresh: () => void;
+  onGoogleLogin: () => Promise<void>;
+  onGoogleLogout: () => Promise<void>;
+  onRefreshCloud: () => Promise<void>;
 }
 
 interface FavoriteEtaState {
@@ -32,13 +32,12 @@ export default function FavoritesSection({
   bookmarks, 
   toggleBookmark, 
   onNavigateToTab,
-  syncCode,
+  user,
   syncLoading,
   syncError,
-  onCreateSyncCode,
-  onLoadSyncCode,
-  onDisconnectSync,
-  onTriggerRefresh
+  onGoogleLogin,
+  onGoogleLogout,
+  onRefreshCloud
 }: FavoritesSectionProps) {
   const [favoriteEtas, setFavoriteEtas] = useState<FavoriteEtaState>({});
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -46,49 +45,42 @@ export default function FavoritesSection({
 
   // Sync state UI variables
   const [isSyncPanelOpen, setIsSyncPanelOpen] = useState<boolean>(false);
-  const [inputCode, setInputCode] = useState<string>("");
-  const [copied, setCopied] = useState<boolean>(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleCopyCode = async () => {
-    if (!syncCode) return;
+  const handleLogin = async () => {
+    setLocalError(null);
+    setSuccessMsg(null);
     try {
-      await navigator.clipboard.writeText(syncCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
+      await onGoogleLogin();
+      setSuccessMsg("成功登入！您的我的最愛已自動與 Google Cloud Firestore 進行安全同步。");
+    } catch (err: any) {
+      setLocalError(err?.message || "登入失敗，請確認彈出視窗並重試");
     }
   };
 
-  const handleCreate = async () => {
+  const handleLogout = async () => {
     setLocalError(null);
     setSuccessMsg(null);
-    const code = await onCreateSyncCode();
-    if (code) {
-      setSuccessMsg(`備份成功！已生成跨平台同步碼：${code}`);
-    } else {
-      setLocalError("備份或生成同步碼失敗，請稍後再試");
+    try {
+      await onGoogleLogout();
+      setSuccessMsg("已成功登出 Google 帳戶並切換回本機/離線模式。");
+    } catch (err: any) {
+      setLocalError(err?.message || "登出失敗，請重試");
     }
   };
 
-  const handleLoad = async () => {
+  const handleRefresh = async () => {
     setLocalError(null);
     setSuccessMsg(null);
-    const clean = inputCode.trim().toUpperCase();
-    if (!clean || clean.length < 5) {
-      setLocalError("請輸入正確的同步代碼");
-      return;
-    }
-    const success = await onLoadSyncCode(clean);
-    if (success) {
-      setSuccessMsg(`同步成功！已成功同步您在其他平台收藏的最愛。`);
-      setInputCode("");
-    } else {
-      setLocalError("找不到此同步碼。請確認代碼是否輸入正確或已過期。");
+    try {
+      await onRefreshCloud();
+      setSuccessMsg("已重新與雲端拉取最新的我的最愛數據！");
+    } catch (err: any) {
+      setLocalError(err?.message || "同步更新失敗，請確認網絡連接");
     }
   };
+
 
   // Parse custom MTR dates helper
   const getMtrMinsRemaining = (timeStr: string) => {
@@ -268,13 +260,13 @@ export default function FavoritesSection({
           className="w-full px-4 py-3 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <Cloud className={`w-4 h-4 ${syncCode ? "text-emerald-500 animate-pulse" : "text-slate-400"}`} />
+            <Cloud className={`w-4 h-4 ${user ? "text-emerald-500 animate-pulse" : "text-slate-400"}`} />
             <span className="text-xs font-bold text-slate-700">
-              {syncCode ? "📳 我的最愛正啟用實時同步" : "☁️ 點此啟用跨平台/手機同步我的最愛"}
+              {user ? "📳 雲端自動同步正啟用中" : "☁️ 點此登入以啟動跨平台/手機同步"}
             </span>
-            {syncCode && (
-              <span className="bg-emerald-50 text-emerald-600 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full border border-emerald-100">
-                代碼: {syncCode}
+            {user && (
+              <span className="bg-emerald-50 text-emerald-600 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-emerald-100">
+                已登入: {user.displayName || user.email}
               </span>
             )}
           </div>
@@ -313,114 +305,82 @@ export default function FavoritesSection({
                 </div>
               )}
 
-              {!syncCode ? (
-                // Not synced state
+              {!user ? (
+                // Not logged in state
                 <div className="space-y-3.5 leading-relaxed text-slate-500">
                   <p>
-                    <strong>香港乘車易</strong> 提供輕量級雲端同步。將您的「我的最愛」打包上傳至智能伺服器，即可在手機、平板或電腦（唔同平台）讀取，毋需註冊任何帳號！
+                    <strong>香港乘車易</strong> 現已支援 <strong>Google 安全雲端自動同步</strong>。
+                    只需登入您的 Google 帳戶，您在此收藏的「我的最愛」車站將安全備份於雲端，不論是 iPhone、Android 手機、平板或電腦皆會完全完美同步！
                   </p>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                    {/* Method A: Create code */}
-                    <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80 space-y-2">
-                      <span className="font-bold text-slate-700 block text-[11px]">方法 1：備份本機最愛並產生同步碼</span>
-                      <p className="text-[10.5px]">將您在此瀏覽器收藏的車站上傳，生成一組專屬的 6 位代碼：</p>
-                      <button
-                        id="btn-sync-create"
-                        onClick={handleCreate}
-                        disabled={syncLoading}
-                        className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-center cursor-pointer transition-colors"
-                      >
-                        建立或匯出同步碼
-                      </button>
-                    </div>
-
-                    {/* Method B: Enter code */}
-                    <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80 space-y-2">
-                      <span className="font-bold text-slate-700 block text-[11px]">方法 2：輸入既有同步碼</span>
-                      <p className="text-[10.5px]">如果您已在手機或其他裝置取得了 6 位代碼，在此輸入以載入最愛：</p>
-                      
-                      <div className="flex gap-1.5">
-                        <input
-                          id="input-sync-code"
-                          type="text"
-                          maxLength={6}
-                          placeholder="例如 MTR9A8"
-                          value={inputCode}
-                          onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                          className="flex-1 bg-white border border-slate-200 outline-none rounded-lg px-2.5 text-slate-800 text-center font-mono font-bold tracking-wider placeholder:font-sans placeholder:font-normal placeholder:tracking-normal focus:border-slate-400 transition-colors uppercase"
-                        />
-                        <button
-                          id="btn-sync-load"
-                          onClick={handleLoad}
-                          disabled={syncLoading || !inputCode.trim()}
-                          className="py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg cursor-pointer transition-colors disabled:opacity-40"
-                        >
-                          載入最愛
-                        </button>
-                      </div>
-                    </div>
+                  <div className="pt-1 select-none">
+                    <button
+                      id="btn-sync-login"
+                      onClick={handleLogin}
+                      disabled={syncLoading}
+                      className="inline-flex items-center justify-center gap-2.5 py-3 px-5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-center cursor-pointer transition-colors"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      使用 Google 帳戶登入並同步
+                    </button>
                   </div>
                 </div>
               ) : (
-                // Synced state
+                // Logged in state
                 <div className="space-y-3.5 leading-relaxed">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/40">
-                    <div>
-                      <span className="font-bold text-slate-800 flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        已啟用安全雲端同步
-                      </span>
-                      <p className="text-slate-400 text-[10.5px] mt-1">
-                        任何在此裝置的新增或刪除，皆會自動備份至雲端。
-                      </p>
+                    <div className="flex items-center gap-3">
+                      {user.photoURL ? (
+                        <img 
+                          src={user.photoURL} 
+                          alt="Avatar" 
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 rounded-full border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-slate-800 text-white font-bold rounded-full flex items-center justify-center text-xs">
+                          {user.displayName?.charAt(0) || "U"}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-bold text-slate-800 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Google 連線同步已啟用
+                        </span>
+                        <p className="text-slate-400 text-[10.5px] mt-1">
+                          已帳戶同步：<strong>{user.displayName || user.email}</strong>
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 font-mono text-sm self-stretch sm:self-auto justify-between border-t border-slate-200/40 sm:border-0 pt-2 sm:pt-0">
-                      <span className="bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg border tracking-wider text-xs">
-                        {syncCode}
-                      </span>
+                    <div className="flex items-center gap-1.5 self-stretch sm:self-auto justify-between border-t border-slate-200/40 sm:border-0 pt-2 sm:pt-0">
                       <button
-                        id="btn-sync-copy"
-                        onClick={handleCopyCode}
-                        className="p-1.5 rounded-lg hover:bg-slate-200/50 text-slate-600 transition-colors flex items-center justify-center border border-slate-200"
-                        title="複製同步碼"
+                        id="btn-sync-logout"
+                        onClick={handleLogout}
+                        disabled={syncLoading}
+                        className="py-1.5 px-3 bg-white border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all text-[10.5px]"
                       >
-                        {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                        <LogOut className="w-3.5 h-3.5" />
+                        登出帳戶
                       </button>
                     </div>
                   </div>
 
                   <p className="text-[10.5px] text-slate-400">
-                    💡 提示：在您的其他平台（如手機瀏覽器）中點選「啟用跨平台同步」，並輸入相同的同步碼 <strong>{syncCode}</strong>，兩端即會保持完全相同。
+                    💡 智能合併：如果您跨多部裝置使用，登入後您的本機最愛和雲端最愛會自動智能合併，絕不丟失任何車站！
                   </p>
 
                   <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
                     <button
                       id="btn-sync-now"
                       onClick={() => {
-                        onTriggerRefresh();
+                        handleRefresh();
                         fetchAllFavorites();
-                        setSuccessMsg("最新最愛數據已與伺服器重新拉取同步。");
                       }}
                       className="py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-colors text-[10.5px]"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      立即同步拉取 (雲端同步至本機)
-                    </button>
-
-                    <button
-                      id="btn-sync-disconnect"
-                      onClick={() => {
-                        if (confirm("確定要解除此同步碼的綁定嗎？解除後本機變更將不會再上傳至該同步軌。")) {
-                          onDisconnectSync();
-                          setSuccessMsg("已解除該同步碼連結。");
-                        }
-                      }}
-                      className="py-1.5 px-3 bg-white border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all text-[10.5px]"
-                    >
-                      <Unlink className="w-3.5 h-3.5" />
-                      解除連結此同步碼
+                      手動重新整理雲端 (強制拉取)
                     </button>
                   </div>
                 </div>

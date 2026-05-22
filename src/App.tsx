@@ -2,59 +2,80 @@ import React, { useState, useEffect } from "react";
 import FavoritesSection from "./components/FavoritesSection";
 import KmbSection from "./components/KmbSection";
 import MtrSection from "./components/MtrSection";
-import { Bookmark, safeJsonParse } from "./types";
-import { Star, Bus, Train, Compass, Info, Github } from "lucide-react";
+import { Bookmark } from "./types";
+import { Star, Bus, Train, Info, LogIn, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { User, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./lib/firebase";
+import { 
+  loginWithGoogle, 
+  logoutUser, 
+  fetchCloudBookmarks, 
+  saveCloudBookmarks, 
+  mergeBookmarks 
+} from "./lib/firebaseSync";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"favorites" | "kmb" | "mtr">("favorites");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [serverStatus, setServerStatus] = useState<"ok" | "connecting" | "error">("connecting");
-  const [syncCode, setSyncCode] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [syncLoading, setSyncLoading] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Fetch latest bookmarks from sync code
-  const fetchLatestFromSync = async (code: string) => {
-    try {
-      setSyncLoading(true);
-      const resp = await fetch(`/api/sync/get/${code.toUpperCase()}`);
-      if (resp.ok) {
-        const json = await safeJsonParse(resp);
-        if (json.status === "ok" && Array.isArray(json.bookmarks)) {
-          setBookmarks(json.bookmarks);
-          localStorage.setItem("hk_transit_bookmarks", JSON.stringify(json.bookmarks));
-          setSyncError(null);
-        }
-      }
-    } catch (err) {
-      console.error("Sync fetch error:", err);
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  // Load bookmarks on initiation
+  // Load bookmarks on initiation and listen to FirebaseAuth
   useEffect(() => {
+    // 1. Load local bookmarks first (instant responsiveness)
     try {
       const stored = localStorage.getItem("hk_transit_bookmarks");
       if (stored) {
         setBookmarks(JSON.parse(stored));
       }
-
-      const storedCode = localStorage.getItem("hk_transit_sync_code");
-      if (storedCode) {
-        setSyncCode(storedCode.toUpperCase());
-        fetchLatestFromSync(storedCode.toUpperCase());
-      }
     } catch (e) {
       console.error("Local storage error:", e);
     }
 
-    // Ping server connection
+    // 2. Firebase Auth authentication state observer
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setSyncLoading(true);
+        setSyncError(null);
+        try {
+          const cloudList = await fetchCloudBookmarks(currentUser.uid);
+          if (cloudList) {
+            // Retrieve latest local bookmarks
+            const localStored = localStorage.getItem("hk_transit_bookmarks");
+            const localList: Bookmark[] = localStored ? JSON.parse(localStored) : [];
+            
+            // Merge device bookmarks with cloud bookmarks
+            const merged = mergeBookmarks(localList, cloudList);
+            setBookmarks(merged);
+            localStorage.setItem("hk_transit_bookmarks", JSON.stringify(merged));
+            
+            // Re-upload merged array to Cloud Firestore
+            await saveCloudBookmarks(currentUser.uid, merged);
+          } else {
+            // Document doesn't exist yet, save current local bookmarks to cloud for this new user
+            const localStored = localStorage.getItem("hk_transit_bookmarks");
+            const localList: Bookmark[] = localStored ? JSON.parse(localStored) : [];
+            if (localList.length > 0) {
+              await saveCloudBookmarks(currentUser.uid, localList);
+            }
+          }
+        } catch (err: any) {
+          console.error("Error loading cloud bookmarks on auth change:", err);
+          setSyncError("數據雲端比對失敗：" + (err.message || err));
+        } finally {
+          setSyncLoading(false);
+        }
+      }
+    });
+
+    // 3. Ping server connection to warm up APIs (for custom backend ETA query proxying)
     const checkServer = async () => {
       try {
-        const resp = await fetch("/api/kmb/routes"); // Warm-up endpoint
+        const resp = await fetch("/api/kmb/routes");
         if (resp.ok) {
           setServerStatus("ok");
         } else {
@@ -65,6 +86,8 @@ export default function App() {
       }
     };
     checkServer();
+
+    return () => unsubscribe();
   }, []);
 
   const toggleBookmark = (bookmark: Bookmark) => {
@@ -78,81 +101,64 @@ export default function App() {
       }
       localStorage.setItem("hk_transit_bookmarks", JSON.stringify(updated));
 
-      // Trigger automatic server upload if a sync code is configured
-      const currentCode = syncCode || localStorage.getItem("hk_transit_sync_code");
-      if (currentCode) {
-        fetch("/api/sync/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: currentCode.toUpperCase(), bookmarks: updated })
-        }).catch((err) => console.error("Auto sync update failed:", err));
+      // Synchronize in real-time if a user is joined to their Google Cloud sync profile
+      if (auth.currentUser) {
+        saveCloudBookmarks(auth.currentUser.uid, updated).catch((err) => {
+          console.error("Real-time cloud sync update failed:", err);
+          setSyncError("部分變更未能即時同步至雲端，請檢查網絡連接。");
+        });
       }
 
       return updated;
     });
   };
 
-  const handleCreateSyncCode = async (): Promise<string | null> => {
+  const handleGoogleLogin = async () => {
     try {
       setSyncLoading(true);
       setSyncError(null);
-      const resp = await fetch("/api/sync/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookmarks })
-      });
-      const json = await safeJsonParse(resp);
-      if (resp.ok && json.status === "ok") {
-        const code = json.code.toUpperCase();
-        setSyncCode(code);
-        localStorage.setItem("hk_transit_sync_code", code);
-        return code;
-      } else {
-        setSyncError(json.message || "建立同步碼失敗");
-        return null;
-      }
+      await loginWithGoogle();
     } catch (err: any) {
-      setSyncError(err.message || "網路錯誤");
-      return null;
+      console.error("App login flow failed:", err);
+      setSyncError(err?.message || "登入操作被取消或發生錯誤。");
+      throw err;
     } finally {
       setSyncLoading(false);
     }
   };
 
-  const handleLoadSyncCode = async (code: string): Promise<boolean> => {
-    const cleanCode = code.trim().toUpperCase();
-    if (!cleanCode) {
-      setSyncError("請輸入正確的同步碼");
-      return false;
-    }
+  const handleGoogleLogout = async () => {
     try {
       setSyncLoading(true);
       setSyncError(null);
-      const resp = await fetch(`/api/sync/get/${cleanCode}`);
-      const json = await safeJsonParse(resp);
-      if (resp.ok && json.status === "ok" && Array.isArray(json.bookmarks)) {
-        setBookmarks(json.bookmarks);
-        localStorage.setItem("hk_transit_bookmarks", JSON.stringify(json.bookmarks));
-        
-        setSyncCode(cleanCode);
-        localStorage.setItem("hk_transit_sync_code", cleanCode);
-        return true;
-      } else {
-        setSyncError(json.message || "找不到該同步碼");
-        return false;
-      }
+      await logoutUser();
+      setUser(null);
     } catch (err: any) {
-      setSyncError(err.message || "網路錯誤");
-      return false;
+      console.error("App logout flow failed:", err);
+      setSyncError(err?.message || "登出操作發生錯誤。");
+      throw err;
     } finally {
       setSyncLoading(false);
     }
   };
 
-  const handleDisconnectSync = () => {
-    setSyncCode(null);
-    localStorage.removeItem("hk_transit_sync_code");
-    setSyncError(null);
+  const handleRefreshCloud = async () => {
+    if (!auth.currentUser) return;
+    try {
+      setSyncLoading(true);
+      setSyncError(null);
+      const cloudList = await fetchCloudBookmarks(auth.currentUser.uid);
+      if (cloudList) {
+        setBookmarks(cloudList);
+        localStorage.setItem("hk_transit_bookmarks", JSON.stringify(cloudList));
+      }
+    } catch (err: any) {
+      console.error("Cloud override pull error:", err);
+      setSyncError("強制更新拉取失敗：" + (err.message || err));
+      throw err;
+    } finally {
+      setSyncLoading(false);
+    }
   };
 
   const selectTab = (tab: "favorites" | "kmb" | "mtr") => {
@@ -285,17 +291,12 @@ export default function App() {
                   onNavigateToTab={(tab) => {
                     setActiveTab(tab);
                   }}
-                  syncCode={syncCode}
+                  user={user}
                   syncLoading={syncLoading}
                   syncError={syncError}
-                  onCreateSyncCode={handleCreateSyncCode}
-                  onLoadSyncCode={handleLoadSyncCode}
-                  onDisconnectSync={handleDisconnectSync}
-                  onTriggerRefresh={() => {
-                    if (syncCode) {
-                      fetchLatestFromSync(syncCode);
-                    }
-                  }}
+                  onGoogleLogin={handleGoogleLogin}
+                  onGoogleLogout={handleGoogleLogout}
+                  onRefreshCloud={handleRefreshCloud}
                 />
               </motion.div>
             )}

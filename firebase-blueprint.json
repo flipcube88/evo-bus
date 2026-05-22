@@ -1,0 +1,21 @@
+{
+  "entities": {
+    "UserSecret": {
+      "title": "User",
+      "description": "User profile containing bookmarks",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookmarks": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "bookmarks", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "UserSecret",
+      "description": "User specific bookmarks storage"
+    }
+  }
+}
